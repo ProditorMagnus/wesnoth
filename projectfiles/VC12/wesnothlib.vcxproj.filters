@@ -126,5 +126,8 @@
       <Filter>spirit_po</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\spirit_po.hpp" />
+    <ClInclude Include="..\..\src\serialization\string_view.hpp">
+      <Filter>Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
