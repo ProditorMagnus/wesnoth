@@ -70,7 +70,7 @@ public:
 		 *                        definition, this parameter contains the values
 		 *                        for these formulas.
 		 */
-		virtual void draw(surface& canvas, SDL_Renderer* renderer,
+		virtual void draw(surface& canvas, SDL_Renderer* renderer, SDL_Texture* texture,
 		                  wfl::map_formula_callable& variables) = 0;
 
 		bool immutable() const
@@ -198,6 +198,8 @@ private:
 
 	/** The surface we draw all items on. */
 	surface canvas_;
+
+	SDL_Texture* texture_;
 
 	SDL_Renderer* renderer_;
 

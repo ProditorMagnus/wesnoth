@@ -32,6 +32,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:
@@ -68,6 +69,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:
@@ -113,6 +115,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:
@@ -159,6 +162,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:
@@ -188,6 +192,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:
@@ -201,6 +206,8 @@ private:
 
 	/** The image is cached in this surface. */
 	surface image_;
+
+	SDL_Texture* image_texture_;
 
 	/**
 	 * Name of the image.
@@ -254,6 +261,7 @@ public:
 	/** Implement shape::draw(). */
 	void draw(surface& canvas,
 			  SDL_Renderer* renderer,
+			  SDL_Texture* texture,
 			  wfl::map_formula_callable& variables) override;
 
 private:

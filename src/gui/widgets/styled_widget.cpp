@@ -421,6 +421,10 @@ void styled_widget::update_canvas()
 		canvas.set_variable("text_characters_per_line",
 							wfl::variant(get_characters_per_line()));
 	}
+
+	if(window* w = get_window()) {
+		w->set_is_dirty(true);
+	}
 }
 
 int styled_widget::get_text_maximum_width() const

@@ -596,6 +596,7 @@ line_shape::line_shape(const config& cfg)
 
 void line_shape::draw(surface& canvas,
 				 SDL_Renderer* renderer,
+				 SDL_Texture* /*texture*/,
 				 wfl::map_formula_callable& variables)
 {
 	/**
@@ -685,6 +686,7 @@ rectangle_shape::rectangle_shape(const config& cfg)
 
 void rectangle_shape::draw(surface& canvas,
 					  SDL_Renderer* renderer,
+					  SDL_Texture* /*texture*/,
 					  wfl::map_formula_callable& variables)
 {
 	/**
@@ -799,6 +801,7 @@ round_rectangle_shape::round_rectangle_shape(const config& cfg)
 
 void round_rectangle_shape::draw(surface& canvas,
 	SDL_Renderer* renderer,
+	SDL_Texture* /*texture*/,
 	wfl::map_formula_callable& variables)
 {
 	/**
@@ -911,6 +914,7 @@ circle_shape::circle_shape(const config& cfg)
 
 void circle_shape::draw(surface& canvas,
 				   SDL_Renderer* renderer,
+				   SDL_Texture* /*texture*/,
 				   wfl::map_formula_callable& variables)
 {
 	/**
@@ -1029,6 +1033,7 @@ image_shape::image_shape(const config& cfg, wfl::action_function_symbol_table& f
 	, h_(cfg["h"])
 	, src_clip_()
 	, image_()
+	, image_texture_(nullptr)
 	, image_name_(cfg["name"])
 	, resize_mode_(get_resize_mode(cfg["resize_mode"]))
 	, vertical_mirror_(cfg["vertical_mirror"])
@@ -1049,11 +1054,19 @@ void image_shape::dimension_validation(unsigned value, const std::string& name, 
 	);
 }
 
-void image_shape::draw(surface& canvas,
-				  SDL_Renderer* /*renderer*/,
+void image_shape::draw(surface& /*canvas*/,
+				  SDL_Renderer* renderer,
+				  SDL_Texture* /*texture*/,
 				  wfl::map_formula_callable& variables)
 {
 	DBG_GUI_D << "Image: draw.\n";
+
+#if 0
+	if(!image_texture_) {
+		image_texture_ = SDL_CreateTexture(
+			renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, canvas->w, canvas->h);
+	}
+#endif
 
 	/**
 	 * @todo formulas are now recalculated every draw cycle which is a  bit
@@ -1071,14 +1084,13 @@ void image_shape::draw(surface& canvas,
 	 * The locator might return a different surface for every call so we can't
 	 * cache the output, also not if no formula is used.
 	 */
-	surface tmp(image::get_image(image::locator(name)));
+	image_.assign(image::get_image(image::locator(name)));
 
-	if(!tmp) {
+	if(!image_) {
 		ERR_GUI_D << "Image: '" << name << "' not found and won't be drawn." << std::endl;
 		return;
 	}
 
-	image_.assign(make_neutral_surface(tmp));
 	assert(image_);
 	src_clip_ = {0, 0, image_->w, image_->h};
 
@@ -1108,7 +1120,6 @@ void image_shape::draw(surface& canvas,
 	wfl::variant(variables.fake_ptr()).execute_variant(actions_formula_.evaluate(local_variables));
 
 	// Copy the data to local variables to avoid overwriting the originals.
-	SDL_Rect src_clip = src_clip_;
 	SDL_Rect dst_clip = sdl::create_rect(clip_x, clip_y, 0, 0);
 	surface surf;
 
@@ -1121,7 +1132,7 @@ void image_shape::draw(surface& canvas,
 				DBG_GUI_D << "Image: vertical stretch from " << image_->w << ','
 						  << image_->h << " to a height of " << h << ".\n";
 
-				surf = stretch_surface_vertical(image_, h);
+				//surf = stretch_surface_vertical(image_, h);
 				done = true;
 			}
 			w = image_->w;
@@ -1133,7 +1144,7 @@ void image_shape::draw(surface& canvas,
 						  << ',' << image_->h << " to a width of " << w
 						  << ".\n";
 
-				surf = stretch_surface_horizontal(image_, w);
+				//surf = stretch_surface_horizontal(image_, w);
 				done = true;
 			}
 			h = image_->h;
@@ -1145,12 +1156,12 @@ void image_shape::draw(surface& canvas,
 				DBG_GUI_D << "Image: tiling from " << image_->w << ','
 						  << image_->h << " to " << w << ',' << h << ".\n";
 
-				surf = tile_surface(image_, w, h, false);
+				//surf = tile_surface(image_, w, h, false);
 			} else if(resize_mode_ == tile_center) {
 				DBG_GUI_D << "Image: tiling centrally from " << image_->w << ','
 						  << image_->h << " to " << w << ',' << h << ".\n";
 
-				surf = tile_surface(image_, w, h, true);
+				//surf = tile_surface(image_, w, h, true);
 			} else {
 				if(resize_mode_ == stretch) {
 					ERR_GUI_D << "Image: failed to stretch image, "
@@ -1160,20 +1171,32 @@ void image_shape::draw(surface& canvas,
 				DBG_GUI_D << "Image: scaling from " << image_->w << ','
 						  << image_->h << " to " << w << ',' << h << ".\n";
 
-				surf = scale_surface(image_, w, h);
+				//surf = scale_surface(image_, w, h);
 			}
 		}
-		src_clip.w = w;
-		src_clip.h = h;
-	} else {
+	} //else {
 		surf = image_;
-	}
+	//}
+
+	//if(vertical_mirror_(local_variables)) {
+	//	surf = flip_surface(surf);
+	//};
+
+	dst_clip.w = w ? w : surf->w;
+	dst_clip.h = h ? h : surf->h;
+
+	//SDL_UpdateTexture(image_texture_, &dst_clip, surf->pixels, surf->pitch);
+	//SDL_RenderCopy(renderer, image_texture_, nullptr, &dst_clip);
+
+	SDL_Texture* txt = SDL_CreateTextureFromSurface(renderer, surf);
 
 	if(vertical_mirror_(local_variables)) {
-		surf = flip_surface(surf);
+		SDL_RenderCopyEx(renderer, txt, nullptr, &dst_clip, 0, nullptr, SDL_FLIP_VERTICAL);
+	} else {
+		SDL_RenderCopy(renderer, txt, nullptr, &dst_clip);
 	}
 
-	blit_surface(surf, &src_clip, canvas, &dst_clip);
+	SDL_DestroyTexture(txt);
 }
 
 image_shape::resize_mode image_shape::get_resize_mode(const std::string& resize_mode)
@@ -1275,7 +1298,8 @@ text_shape::text_shape(const config& cfg)
 }
 
 void text_shape::draw(surface& canvas,
-				 SDL_Renderer* /*renderer*/,
+				 SDL_Renderer* renderer,
+				 SDL_Texture* /*texture*/,
 				 wfl::map_formula_callable& variables)
 {
 	assert(variables.has_key("text"));
@@ -1353,8 +1377,12 @@ void text_shape::draw(surface& canvas,
 					 "canvas and will be clipped.\n";
 	}
 
-	SDL_Rect dst = sdl::create_rect(x, y, canvas->w, canvas->h);
-	blit_surface(surf, nullptr, canvas, &dst);
+	SDL_Rect dst = sdl::create_rect(x, y, surf->w, surf->h);
+
+	SDL_Texture* txt = SDL_CreateTextureFromSurface(renderer, surf);
+	SDL_RenderCopy(renderer, txt, nullptr, &dst);
+
+	SDL_DestroyTexture(txt);
 }
 
 /***** ***** ***** ***** ***** CANVAS ***** ***** ***** ***** *****/
@@ -1365,7 +1393,8 @@ canvas::canvas()
 	, w_(0)
 	, h_(0)
 	, canvas_()
-	, renderer_(nullptr)
+	, texture_(nullptr)
+	, renderer_(*CVideo::get_singleton().get_window())
 	, variables_()
 	, functions_()
 	, is_dirty_(true)
@@ -1374,48 +1403,67 @@ canvas::canvas()
 
 canvas::~canvas()
 {
-	SDL_DestroyRenderer(renderer_);
+	SDL_DestroyTexture(texture_);
 }
 
-void canvas::draw(const bool force)
+void canvas::draw(const bool /*force*/)
 {
 	log_scope2(log_gui_draw, "Canvas: drawing.");
-	if(!is_dirty_ && !force) {
-		DBG_GUI_D << "Canvas: nothing to draw.\n";
-		return;
-	}
+	//if(!is_dirty_ && !force) {
+	//	DBG_GUI_D << "Canvas: nothing to draw.\n";
+	//	return;
+	//}
 
-	if(is_dirty_) {
+	//if(is_dirty_) {
 		get_screen_size_variables(variables_);
 		variables_.add("width", wfl::variant(w_));
 		variables_.add("height", wfl::variant(h_));
-	}
+	//}
 
 	// create surface
 	DBG_GUI_D << "Canvas: create new empty canvas.\n";
 	canvas_.assign(create_neutral_surface(w_, h_));
 
-	SDL_DestroyRenderer(renderer_);
+	//SDL_DestroyTexture(texture_);
+	//texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w_, h_);
 
-	renderer_ = SDL_CreateSoftwareRenderer(canvas_);
-	SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
+	//renderer_ = SDL_CreateSoftwareRenderer(canvas_);
+	//SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
 
 	// draw items
 	for(auto& shape : shapes_) {
 		lg::scope_logger inner_scope_logging_object__(log_gui_draw, "Canvas: draw shape.");
 
-		shape->draw(canvas_, renderer_, variables_);
+		shape->draw(canvas_, renderer_, texture_, variables_);
 	}
 
-	SDL_RenderPresent(renderer_);
+	//SDL_RenderPresent(renderer_);
 
 	is_dirty_ = false;
 }
 
-void canvas::blit(surface& surf, SDL_Rect rect)
+void canvas::blit(surface& /*surf*/, SDL_Rect rect)
 {
+	//SDL_DestroyTexture(texture_);
+	//texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w_, h_);
+
+	//SDL_SetRenderTarget(renderer_, texture_);
+	SDL_RenderSetViewport(renderer_, &rect);
+
+	//SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+	//SDL_RenderFillRect(renderer_, &rect);
+
 	draw();
 
+	//SDL_RenderCopy(renderer_, texture_, nullptr, &rect);
+
+	SDL_RenderSetViewport(renderer_, nullptr);
+	//SDL_SetRenderTarget(renderer_, nullptr);
+
+	//SDL_RenderCopy(renderer_, texture_, nullptr, &rect);
+
+	// TODO: reenable
+#if 0
 	if(blur_depth_) {
 		/*
 		 * If the surf is the video surface the blurring seems to stack, this
@@ -1432,8 +1480,9 @@ void canvas::blit(surface& surf, SDL_Rect rect)
 			sdl_blit(s, nullptr, surf, &r);
 		}
 	}
+#endif
 
-	sdl_blit(canvas_, nullptr, surf, &rect);
+	//sdl_blit(canvas_, nullptr, surf, &rect);
 }
 
 void canvas::parse_cfg(const config& cfg)
