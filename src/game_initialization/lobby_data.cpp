@@ -511,7 +511,8 @@ game_info::ADDON_REQ game_info::check_addon_version_compatibility(const config& 
 			});
 
 			required_addons.push_back(r);
-			return r.outcome;
+			return SATISFIED;
+			// return r.outcome;
 		}
 
 		// Check if our version is too out of date to play.
